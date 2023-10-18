@@ -1,3 +1,7 @@
+<div align="center">
+    <a href="https://pkg.go.dev/github.com/metal3d/fyne-streamer"><img src="https://pkg.go.dev/badge/github.com/metal3d/fyne-streamer.svg" alt="Go Reference"></a>
+</div>
+
 # Gstreamer with Fyne - Audio/Video Widget
 
 Fyne-Streamer offers you a number of widgets that will enable you to display videos or manipulate sound with your applications developed with [Fyne](https://fyne.io).
