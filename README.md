@@ -31,6 +31,8 @@ There is a "complete" demo in `./examples/blender-peertube` directory. Get this 
 go run -v ./examples/blender-peertube
 ```
 
+> There are others examples like a green screen remover, camera viewer with effects, and a simple "videotest". You are pleased to read the sources of these example to understand how the viewer and player work.
+
 
 This application takes video list from [Peertube channel of Blender](https://video.blender.org/), and proposes to stream the videos in a Player. You can also open a local file, or paste a video URL (and press Enter).
 
