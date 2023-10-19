@@ -1,5 +1,6 @@
 <div align="center">
     <a href="https://pkg.go.dev/github.com/metal3d/fyne-streamer"><img src="https://pkg.go.dev/badge/github.com/metal3d/fyne-streamer.svg" alt="Go Reference"></a>
+    <a href="https://goreportcard.com/report/github.com/metal3d/fyne-streamer"><img src="https://goreportcard.com/badge/github.com/metal3d/fyne-streamer" alt="Go Report"/></a>
 </div>
 
 # Gstreamer with Fyne - Audio/Video Widget
@@ -19,13 +20,22 @@ To install these widgets, you must first have the Gstreamer development files on
 
 On Windows, you need to download Gstreamer and follow the configuration suggested by the [Go-GST](https://github.com/go-gst/go-gst) package in the [Windows](https://github.com/go-gst/go-gst#windows) section.
 
+> **Important** On Windows, it seems that the only MingW version that successfuly builds go-gst is <= 11. Also, you **must** add the "bin" directory of "Gstreamer" (mingw version) in the "Path" environment to avoid copying the DLLs to your working directory.
+
 For Mac users, you should be fine with "HomeBrew".
 
+Android, iOs...
+
 > **At this time, although Gstreamer is compatible with Android and iOS, we can't provide documentation on how to compile your applications with Fyne-Streamer - but as soon as we have the solution, it will be presented here.**
+>
+> If you're confortable with Android or iOS development, you're welcome to provide us a solution!
 
-Also...
+And finaly...
 
-> **Warning**, installing and compiling Go-Gst could take a while. The first time you'll compile your application, it may take 1 minute to compile and start. The next compilations will be very fast. See [This issue](https://github.com/go-gst/go-gst/issues/16)
+> Installing and **compiling Go-Gst could take a while**. The first time you'll compile your application, it may take several minutes to finalize the process.
+> This only happens once, to make Go caching the compilation results.
+> 
+> The next compilations will be very fast. See [This issue](https://github.com/go-gst/go-gst/issues/16)
 
 ## Demo
 
