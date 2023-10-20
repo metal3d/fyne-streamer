@@ -16,6 +16,9 @@ import (
 	streamer "github.com/metal3d/fyne-streamer"
 )
 
+// autoHideDuration is the default duration of the auto hide of the controls.
+const autoHideDuration = 2 * time.Second
+
 var _ fyne.Widget = (*VideoControls)(nil)
 var _ fyne.WidgetRenderer = (*videoControlsRenderer)(nil)
 
@@ -33,7 +36,7 @@ type VideoControls struct {
 func NewVideoControls(viewer *Viewer) *VideoControls {
 	vc := &VideoControls{
 		viewer:   viewer,
-		timeStep: time.Second * 5,
+		timeStep: autoHideDuration,
 	}
 	vc.ExtendBaseWidget(vc)
 	return vc

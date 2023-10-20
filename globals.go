@@ -1,5 +1,7 @@
 package streamer
 
+import "fmt"
+
 const (
 	// InputElementName is the name of the input element. Filesrc, souphttpsrc...
 	InputElementName ElementName = "fyne-input"
@@ -49,3 +51,12 @@ var ElementMap = map[string]ElementName{
 
 // ElementName is the name of a GStreamer element. It's a string (alias).
 type ElementName = string
+
+var (
+	ErrNoPipeline            = fmt.Errorf("no pipeline")
+	ErrPositionUnseekable    = fmt.Errorf("could not get position")
+	ErrSeekUnsupported       = fmt.Errorf("seeking is not supported")
+	ErrSeekFailed            = fmt.Errorf("seek failed")
+	ErrFailedToGetFirstFrame = fmt.Errorf("failed to get the first frame")
+	ErrNoDuration            = fmt.Errorf("couldn't get duration")
+)

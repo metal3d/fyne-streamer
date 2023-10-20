@@ -9,8 +9,6 @@ import (
 	"image/jpeg"
 	"image/png"
 	"log"
-	"regexp"
-	"strconv"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -28,15 +26,24 @@ func (v *Viewer) prerollFunc(appSink *app.Sink) gst.FlowReturn {
 	if len(caps) == 0 && err != nil {
 		return gst.FlowError
 	}
-	// TODO: is there any better way to get width and height in the caps?
-	capstring := caps[0].GetCurrentCaps().String()
-	matches := regexp.MustCompile(`width=\(int\)(\d+)`).FindStringSubmatch(capstring)
-	if len(matches) > 1 {
-		v.width, _ = strconv.Atoi(matches[1])
+
+	c := caps[0].GetCurrentCaps()
+	ww, err := c.GetStructureAt(0).GetValue("width")
+	if err != nil {
+		log.Printf("Error: %v", err)
 	}
-	matches = regexp.MustCompile(`height=\(int\)(\d+)`).FindStringSubmatch(capstring)
-	if len(matches) > 1 {
-		v.height, _ = strconv.Atoi(matches[1])
+
+	hh, err := c.GetStructureAt(0).GetValue("height")
+	if err != nil {
+		log.Printf("Error: %v", err)
+	}
+
+	if ww, ok := ww.(int); ok {
+		v.width = ww
+	}
+
+	if hh, ok := hh.(int); ok {
+		v.height = hh
 	}
 
 	// call the callback
@@ -103,7 +110,6 @@ func (v *Viewer) eosFunc(appSink *app.Sink) {
 	if v.onEOS != nil {
 		v.onEOS()
 	}
-	log.Printf("EOS")
 	err := v.SetState(gst.StatePaused)
 	if err != nil {
 		fyne.LogError("Failed to set pipeline to paused", err)
@@ -210,26 +216,31 @@ func (v *Viewer) setState(state gst.State) error {
 		return fmt.Errorf("No pipeline")
 	}
 
-	done := make(chan bool)
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-
-	// set the state in a goroutine
-	go func() {
-		err := v.pipeline.SetState(state)
-		if err != nil {
-			fyne.LogError("Failed to set state", err)
-		}
-		done <- true
-	}()
-
-	// wait for the state to be set or timeout
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("Failed to set state to %s", state.String())
-	case <-done:
-		return nil
+	// change the state
+	err := v.pipeline.SetState(state)
+	if err != nil {
+		fyne.LogError("Failed to set state", err)
+		return err
 	}
+
+	// wait for the state to be set
+	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				// timeout or context cancelled
+				return
+			case <-time.After(1 * time.Millisecond):
+				current_state := v.pipeline.GetCurrentState()
+				if current_state == state {
+					cancel()
+				}
+			}
+		}
+	}()
+	<-ctx.Done()
+	return err
 }
 
 func (v *Viewer) setCurrentWindowFinder(w fyne.CanvasObject) {

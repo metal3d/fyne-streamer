@@ -13,11 +13,11 @@ import (
 	"github.com/metal3d/fyne-streamer/internal/utils"
 )
 
-// autoHideDuration is the default duration of the auto hide of the controls.
-const autoHideDuration = 2 * time.Second
-
 var _ fyne.Widget = (*Viewer)(nil)
-var _ utils.MediaReader = (*Viewer)(nil)
+var _ utils.MediaControl = (*Viewer)(nil)
+var _ utils.MediaDuration = (*Viewer)(nil)
+var _ utils.MediaOpener = (*Viewer)(nil)
+var _ utils.MediaSeeker = (*Viewer)(nil)
 
 // Viewer widget is a simple video player with no controls to display.
 // This is a base widget to only read a video or that can be extended to create a video player with controls.
@@ -35,7 +35,6 @@ type Viewer struct {
 	imageQuality     int
 	width            int
 	height           int
-	isFullScreen     bool
 	duration         time.Duration
 	frame            *canvas.Image
 	fullscreenWindow fyne.Window
@@ -71,11 +70,11 @@ func (v *Viewer) CreateRenderer() fyne.WidgetRenderer {
 // CurrentPosition returns the current position of the stream in time.
 func (v *Viewer) CurrentPosition() (time.Duration, error) {
 	if v.pipeline == nil {
-		return 0, fmt.Errorf("No pipeline")
+		return 0, streamer.ErrNoPipeline
 	}
 	ok, pos := v.pipeline.QueryPosition(gst.FormatTime)
 	if !ok {
-		return 0, fmt.Errorf("Failed to get position")
+		return 0, streamer.ErrPositionUnseekable
 	}
 	return time.Duration(float64(pos)), nil
 }
@@ -83,14 +82,14 @@ func (v *Viewer) CurrentPosition() (time.Duration, error) {
 // Duration returns the duration of the stream if possible.
 func (v *Viewer) Duration() (time.Duration, error) {
 	if v.pipeline == nil {
-		return 0, fmt.Errorf("No pipeline")
+		return 0, streamer.ErrNoPipeline
 	}
 	if v.duration != 0 {
 		return v.duration, nil
 	}
 	ok, duration := v.pipeline.QueryDuration(gst.FormatTime)
 	if !ok {
-		return 0, fmt.Errorf("Failed to get duration")
+		return 0, streamer.ErrNoDuration
 	}
 	v.duration = time.Duration(float64(duration))
 	return v.duration, nil
@@ -235,7 +234,7 @@ func (v *Viewer) OnStartPlaying(f func()) {
 // Pause the stream if the pipeline is not nil.
 func (v *Viewer) Pause() error {
 	if v.pipeline == nil {
-		return fmt.Errorf("No pipeline")
+		return streamer.ErrNoPipeline
 	}
 	defer func() {
 		if v.onPaused != nil {
@@ -260,7 +259,7 @@ func (v *Viewer) Pipeline() *gst.Pipeline {
 // Play the stream if the pipeline is not nil.
 func (v *Viewer) Play() error {
 	if v.pipeline == nil {
-		return fmt.Errorf("No pipeline")
+		return streamer.ErrNoPipeline
 	}
 	defer func() {
 		if v.onStartPlaying != nil {
@@ -276,17 +275,17 @@ func (v *Viewer) Play() error {
 // If the element or the pipeline cannot be seekable, the operation is cancelled.
 func (v *Viewer) Seek(pos time.Duration) error {
 	if v.pipeline == nil {
-		return fmt.Errorf("No pipeline")
+		return streamer.ErrNoPipeline
 	}
 	query := gst.NewSeekingQuery(gst.FormatTime)
 	if !v.pipeline.Query(query) {
-		return fmt.Errorf("Seeking is not supported")
+		return streamer.ErrSeekUnsupported
 	}
 
 	defer v.resync()
 	done := v.pipeline.SeekTime(pos, gst.SeekFlagFlush)
 	if !done {
-		return fmt.Errorf("Seek failed")
+		return streamer.ErrSeekFailed
 	}
 	v.appSink.Element.SyncStateWithParent()
 	return nil
@@ -361,26 +360,26 @@ func (v *Viewer) SetHue(hue float64) {
 func (v *Viewer) SetMaxRate(rate int) error {
 
 	if v.pipeline == nil {
-		return fmt.Errorf("No pipeline")
+		return streamer.ErrNoPipeline
 	}
 	rateElement, err := v.pipeline.GetElementByName(streamer.VideoRateElementName)
 	if err != nil {
-		return fmt.Errorf("Failed to find the video rate element: %w", err)
+		return fmt.Errorf("failed to find the video rate element: %w", err)
 	}
 
 	if rateElement == nil {
-		return fmt.Errorf("No video rate element in the pipeline")
+		return fmt.Errorf("no video rate element in the pipeline")
 	}
 
 	duration := time.Duration(float64(time.Second) / float64(rate))
 	if err := rateElement.SetProperty("max-rate", int(duration)); err != nil {
-		return fmt.Errorf("Failed to set max-rate property: %w", err)
+		return fmt.Errorf("failed to set max-rate property: %w", err)
 	}
 
 	// try to set the max-lateness of the appsink
 	if v.appSink != nil {
 		if err := v.appSink.SetProperty("max-lateness", int64(duration)); err != nil {
-			return fmt.Errorf("Failed to set max-lateness property: %w", err)
+			return fmt.Errorf("failed to set max-lateness property: %w", err)
 		}
 	}
 
@@ -415,32 +414,32 @@ func (v *Viewer) SetOnTitle(f func(string)) {
 // SetQuality of the jpeg encoder. If que quality is not between 0 and 100, nothing is done.
 func (v *Viewer) SetQuality(q int) error {
 	if v.pipeline == nil {
-		return fmt.Errorf("No pipeline")
+		return streamer.ErrNoPipeline
 	}
 	imageEncoderElement, err := v.pipeline.GetElementByName(streamer.ImageEncoderElementName)
 	if err != nil {
-		return fmt.Errorf("Failed to find the image encoder element: %w", err)
+		return fmt.Errorf("failed to find the image encoder element: %w", err)
 	}
 
 	if q < 0 || q > 100 {
-		return fmt.Errorf("The quality should be 0 < s < 100, given value %v", q)
+		return fmt.Errorf("the quality should be 0 < s < 100, given value %v", q)
 	}
 
 	pluginname := imageEncoderElement.GetFactory().GetName()
 	switch pluginname {
 	case "jpegenc":
 		if err := imageEncoderElement.SetProperty("quality", q); err != nil {
-			return fmt.Errorf("Failed to set quality property: %w", err)
+			return fmt.Errorf("failed to set quality property: %w", err)
 		}
 	case "pngenc":
 		compressionLevel := 9 - (q * 9 / 100)
 		if err := imageEncoderElement.SetProperty("compression-level", compressionLevel); err != nil {
 			// compression-level 0 to 9, convert the quality to compression-level
 			// 0 is the best quality, 9 is the worst
-			return fmt.Errorf("Failed to set quality property: %w", err)
+			return fmt.Errorf("failed to set quality property: %w", err)
 		}
 	default:
-		return fmt.Errorf("The image encoder element is not jpegenc or pngenc, it is %s", pluginname)
+		return fmt.Errorf("the image encoder element is not jpegenc or pngenc, it is %s", pluginname)
 	}
 
 	v.imageQuality = q
@@ -457,7 +456,7 @@ func (v *Viewer) SetSaturation(saturation float64) {
 	}
 	videoBalanceElement, err := v.pipeline.GetElementByName(streamer.VideoBalanceElementName)
 	if err != nil {
-		fyne.LogError("Failed to find the video balance element", err)
+		fyne.LogError("failed to find the video balance element", err)
 		return
 	}
 	videoBalanceElement.SetProperty("saturation", saturation)
@@ -485,7 +484,7 @@ func (v *Viewer) SetVolume(volume float64) {
 	}
 	volumeElement, err := v.pipeline.GetElementByName(streamer.VolumeElementName)
 	if err != nil {
-		fyne.LogError("Failed to find the volume element", err)
+		fyne.LogError("failed to find the volume element", err)
 		return
 	}
 	volumeElement.SetProperty("volume", volume)
@@ -507,7 +506,7 @@ func (v *Viewer) Unmute() {
 	}
 	volumeElement, err := v.pipeline.GetElementByName(streamer.VolumeElementName)
 	if err != nil {
-		fyne.LogError("Failed to find the volume element", err)
+		fyne.LogError("failed to find the volume element", err)
 		return
 	}
 	volumeElement.SetProperty("mute", false)
@@ -527,7 +526,6 @@ func CreateBaseVideoViewer() *Viewer {
 		frame:        canvas.NewImageFromResource(nil),
 		rate:         30,
 		imageQuality: 85,
-		isFullScreen: false,
 	}
 
 	v.SetFillMode(canvas.ImageFillContain)
