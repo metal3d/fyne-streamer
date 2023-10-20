@@ -25,6 +25,7 @@ jobs:
         sudo apt-get update && \
         sudo DEBIAN_FRONTEND=noninteractive \
           apt-get install -yq \
+          jackd
           gcc \
           git \
           ca-certificates \
@@ -40,4 +41,6 @@ jobs:
       run: go build -v ./...
 
     - name: Test
-      run: go test -v ./video
+      run: |
+        jackd -r -d dummy &>/dev/null &
+        go test -v ./video
