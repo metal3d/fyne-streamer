@@ -25,7 +25,7 @@ jobs:
         sudo apt-get update && \
         sudo DEBIAN_FRONTEND=noninteractive \
           apt-get install -yq \
-          jackd
+          jackd \
           gcc \
           git \
           ca-certificates \
