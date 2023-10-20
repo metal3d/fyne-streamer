@@ -24,7 +24,11 @@ jobs:
       run: |
         sudo apt-get update && \
         sudo DEBIAN_FRONTEND=noninteractive \
-          apt-get install -y \
+          apt-get install -yq \
+          gcc \
+          git \
+          ca-certificates \
+          libgl1-mesa-dev xorg-dev \
           libunwind-dev \
           libgstreamer1.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
           libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
