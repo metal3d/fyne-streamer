@@ -12,21 +12,6 @@ var (
 	gstInit = false
 )
 
-// convenience function to add all elements to the pipeline from a map
-// built with the mustCreateElement function.
-func AddToPipeline(pipeline *gst.Pipeline, elements map[string]*gst.Element) error {
-	err := pipeline.AddMany(func() []*gst.Element {
-		all := make([]*gst.Element, len(elements))
-		i := 0
-		for _, element := range elements {
-			all[i] = element
-			i++
-		}
-		return all
-	}()...)
-	return err
-}
-
 // GetWindowForElement returns the window that contains the given element.
 func GetWindowForElement(o fyne.CanvasObject) fyne.Window {
 	canvas := fyne.CurrentApp().Driver().CanvasForObject(o)
@@ -69,6 +54,21 @@ func MustCreateElement(elementname string, properties map[string]interface{}) *g
 func NewPipelineFromString(pipeline string) (*gst.Pipeline, error) {
 	GstreamerInit()
 	return gst.NewPipelineFromString(RemoveComments(pipeline))
+}
+
+// convenience function to add all elements to the pipeline from a map
+// built with the mustCreateElement function.
+func AddToPipeline(pipeline *gst.Pipeline, elements map[string]*gst.Element) error {
+	err := pipeline.AddMany(func() []*gst.Element {
+		all := make([]*gst.Element, len(elements))
+		i := 0
+		for _, element := range elements {
+			all[i] = element
+			i++
+		}
+		return all
+	}()...)
+	return err
 }
 
 // RemoveComments removes all comments from the given string.

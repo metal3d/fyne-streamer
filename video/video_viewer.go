@@ -61,23 +61,6 @@ func NewViewer() *Viewer {
 	return v
 }
 
-// CreateBaseVideoViewer returns a new video widget without the base widget.
-// It is useful to create various video widgets with the same base.
-// It's MANDATORY to use it to create viewers.
-func CreateBaseVideoViewer() *Viewer {
-	utils.GstreamerInit()
-	v := &Viewer{
-		frame:        canvas.NewImageFromResource(nil),
-		rate:         30,
-		imageQuality: 85,
-		isFullScreen: false,
-	}
-
-	v.SetFillMode(canvas.ImageFillContain)
-	v.SetScaleMode(canvas.ImageScaleFastest)
-	return v
-}
-
 // CreateRenderer creates a renderer for the video widget.
 //
 // Implements: fyne.Widget
@@ -245,26 +228,6 @@ func (v *Viewer) Mute() {
 	volumeElement.SetProperty("mute", true)
 }
 
-// SetOnEOS set the function to call when EOS is reached in the pipeline. E.g. when the// video ends.
-func (v *Viewer) SetOnEOS(f func()) {
-	v.onEOS = f
-}
-
-// SetOnNewFrame set the function that is called when a new frame is available and presented to the view. The position is set as time.Duration to the function.
-func (v *Viewer) SetOnNewFrame(f func(time.Duration)) {
-	v.onNewFrame = f
-}
-
-// SetOnPaused set the function that is called when the pipeline is paused.
-func (v *Viewer) SetOnPaused(f func()) {
-	v.onPaused = f
-}
-
-// SetOnPreRoll set the function that is called when the pipeline is prerolling. At this time, you must be able to get the video size and duration.
-func (v *Viewer) SetOnPreRoll(f func()) {
-	v.onPreRoll = f
-}
-
 func (v *Viewer) OnStartPlaying(f func()) {
 	v.onStartPlaying = f
 }
@@ -425,6 +388,26 @@ func (v *Viewer) SetMaxRate(rate int) error {
 	return nil
 }
 
+// SetOnEOS set the function to call when EOS is reached in the pipeline. E.g. when the// video ends.
+func (v *Viewer) SetOnEOS(f func()) {
+	v.onEOS = f
+}
+
+// SetOnNewFrame set the function that is called when a new frame is available and presented to the view. The position is set as time.Duration to the function.
+func (v *Viewer) SetOnNewFrame(f func(time.Duration)) {
+	v.onNewFrame = f
+}
+
+// SetOnPaused set the function that is called when the pipeline is paused.
+func (v *Viewer) SetOnPaused(f func()) {
+	v.onPaused = f
+}
+
+// SetOnPreRoll set the function that is called when the pipeline is prerolling. At this time, you must be able to get the video size and duration.
+func (v *Viewer) SetOnPreRoll(f func()) {
+	v.onPreRoll = f
+}
+
 func (v *Viewer) SetOnTitle(f func(string)) {
 	v.onTitle = f
 }
@@ -533,4 +516,21 @@ func (v *Viewer) Unmute() {
 // VideoSize returns the size of the video (resolution in pixels).
 func (v *Viewer) VideoSize() fyne.Size {
 	return fyne.NewSize(float32(v.width), float32(v.height))
+}
+
+// CreateBaseVideoViewer returns a new video widget without the base widget.
+// It is useful to create various video widgets with the same base.
+// It's MANDATORY to use it to create viewers.
+func CreateBaseVideoViewer() *Viewer {
+	utils.GstreamerInit()
+	v := &Viewer{
+		frame:        canvas.NewImageFromResource(nil),
+		rate:         30,
+		imageQuality: 85,
+		isFullScreen: false,
+	}
+
+	v.SetFillMode(canvas.ImageFillContain)
+	v.SetScaleMode(canvas.ImageScaleFastest)
+	return v
 }

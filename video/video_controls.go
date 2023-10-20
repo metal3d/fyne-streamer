@@ -19,6 +19,7 @@ import (
 var _ fyne.Widget = (*VideoControls)(nil)
 var _ fyne.WidgetRenderer = (*videoControlsRenderer)(nil)
 
+// VideoControls is the widget that displays the video controls (play, pause, fullscreen, etc.).
 type VideoControls struct {
 	widget.BaseWidget
 	viewer   *Viewer
@@ -95,125 +96,22 @@ func newVideoControlsRenderer(parent *VideoControls) *videoControlsRenderer {
 		manualSeeked: true,
 	}
 
-	var (
-		playbutton       *widget.Button
-		fullscreenButton *widget.Button
-		timeText         *widget.Label
-		cursor           *widget.Slider
-		controls         *fyne.Container
-		background       *canvas.Rectangle
-	)
-
-	videoPlayer := parent.viewer
-	playbutton = widget.NewButtonWithIcon("", theme.MediaPlayIcon(), func() {
-		if videoPlayer.pipeline == nil {
-			return
-		}
-		if videoPlayer.IsPlaying() {
-			videoPlayer.Pause()
-		} else {
-			videoPlayer.Play()
-		}
-		if parent.onTapped != nil {
-			parent.onTapped()
-		}
-	})
-	playbutton.Importance = widget.LowImportance
-
-	fullscreenButton = widget.NewButtonWithIcon("", theme.ViewFullScreenIcon(), func() {
-		//renderer.parent.viewer.ToggleFullScreen()
-		if renderer.isFullScreen {
-			renderer.parent.viewer.SetFullScreen(false)
-		} else {
-			renderer.parent.viewer.SetFullScreen(true)
-		}
-		renderer.isFullScreen = !renderer.isFullScreen
-	})
-	fullscreenButton.Importance = widget.LowImportance
-
-	timeText = widget.NewLabel("00:00:00 / 00:00:00")
+	timeText := widget.NewLabel("00:00:00 / 00:00:00")
 	timeText.Alignment = fyne.TextAlignCenter
 
-	cursor = widget.NewSlider(0, 100)
-	cursor.OnChanged = func(value float64) {
-		if renderer.manualSeeked {
-			renderer.parent.viewer.Seek(time.Duration(value) * time.Millisecond)
-			if parent.onTapped != nil {
-				parent.onTapped()
-			}
-		}
-	}
-	cursor.OnChangeEnded = func(value float64) {
-		if renderer.manualSeeked {
-			if renderer.parent.viewer.IsPlaying() {
-				return
-			}
-			im, ret := renderer.parent.viewer.getCurrentFrame(renderer.parent.viewer.appSink, true)
-			if ret != gst.FlowOK {
-				log.Println("error getting frame", ret)
-				return
-			}
-			renderer.parent.viewer.Frame().Image = im
-			renderer.parent.viewer.Frame().Refresh()
-			if parent.onTapped != nil {
-				parent.onTapped()
-			}
-		}
-	}
+	fullscreenButton := renderer.createFullScreenButton()
+	playbutton := renderer.createPlayButton()
+	cursor := renderer.cratePositionCursor()
+	volumeSlider := renderer.createVolumeSlider()
+	backToZeroButton := renderer.createBackToZeroButton()
+	stepForwardButton := renderer.createStepForwardButton()
+	stepBackwardButton := renderer.createStepBackwardButton()
+	volumeMuteButton := renderer.createVolumeMuteButton()
 
-	volumeSlider := widget.NewSlider(0, 1)
-	volumeSlider.Orientation = widget.Vertical
-	volumeSlider.Step = 0.01
-	volumeSlider.Value = 1
-	volumeSlider.OnChanged = func(value float64) {
-		renderer.parent.viewer.SetVolume(value)
-	}
-
-	backToZeroButton := widget.NewButtonWithIcon("", theme.MediaSkipPreviousIcon(), func() {
-		renderer.parent.viewer.Seek(0)
-		if parent.onTapped != nil {
-			parent.onTapped()
-		}
-	})
-	backToZeroButton.Importance = widget.LowImportance
-
-	stepForwardButton := widget.NewButtonWithIcon("", theme.MediaFastForwardIcon(), func() {
-		pos, _ := renderer.parent.viewer.CurrentPosition()
-		renderer.parent.viewer.Seek(pos + parent.timeStep)
-		if parent.onTapped != nil {
-			parent.onTapped()
-		}
-	})
-	stepForwardButton.Importance = widget.LowImportance
-
-	stepBackwardButton := widget.NewButtonWithIcon("", theme.MediaFastRewindIcon(), func() {
-		pos, _ := renderer.parent.viewer.CurrentPosition()
-		renderer.parent.viewer.Seek(pos - parent.timeStep)
-		if parent.onTapped != nil {
-			parent.onTapped()
-		}
-	})
-	stepBackwardButton.Importance = widget.LowImportance
-
-	volumeMuteButton := widget.NewButtonWithIcon("", theme.VolumeUpIcon(), func() {
-		renderer.parent.viewer.ToggleMute()
-		if renderer.parent.viewer.IsMuted() {
-			renderer.muteButton.SetIcon(theme.VolumeMuteIcon())
-		} else {
-			renderer.muteButton.SetIcon(theme.VolumeUpIcon())
-		}
-		if parent.onTapped != nil {
-			parent.onTapped()
-		}
-	})
-	volumeMuteButton.Importance = widget.LowImportance
-
-	videoControlsButton := widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
-		renderer.showVideoControls()
-	})
+	videoControlsButton := widget.NewButtonWithIcon("", theme.SettingsIcon(), renderer.showVideoControls)
 	videoControlsButton.Importance = widget.LowImportance
 
-	controls = container.NewBorder(
+	controls := container.NewBorder(
 		timeText, // the timer (time position / duration)
 		cursor,   // the cursor to navigate in the video
 		nil, nil,
@@ -232,15 +130,15 @@ func newVideoControlsRenderer(parent *VideoControls) *videoControlsRenderer {
 	)
 
 	// build a semi transparent background based on the theme.BackgroundColor()
-	r, b, g, a := theme.BackgroundColor().RGBA()
-	variant := fyne.CurrentApp().Settings().ThemeVariant()
-	if variant == theme.VariantDark {
-		a = 0xAF
+	r, b, g, _ := theme.BackgroundColor().RGBA()
+	var alpha uint32
+	if fyne.CurrentApp().Settings().ThemeVariant() == theme.VariantDark {
+		alpha = 0xAF
 	} else {
-		a = 0x9F
+		alpha = 0x9F
 	}
 
-	background = canvas.NewRectangle(color.NRGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: uint8(a)})
+	background := canvas.NewRectangle(color.NRGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: uint8(alpha)})
 	background.CornerRadius = theme.InputRadiusSize() * 4
 
 	// register the controls elements
@@ -335,6 +233,136 @@ func (v *videoControlsRenderer) Refresh() {
 
 	v.controls.Refresh()
 	v.background.Refresh()
+}
+
+func (v *videoControlsRenderer) cratePositionCursor() *widget.Slider {
+	cursor := widget.NewSlider(0, 100)
+	cursor.OnChanged = func(value float64) {
+		if !v.manualSeeked {
+			return
+		}
+		v.parent.viewer.Seek(time.Duration(value) * time.Millisecond)
+		if v.parent.onTapped == nil {
+			return
+		}
+		v.parent.onTapped()
+	}
+	cursor.OnChangeEnded = func(value float64) {
+		if !v.manualSeeked {
+			return
+		}
+		if v.parent.viewer.IsPlaying() {
+			return
+		}
+		im, ret := v.parent.viewer.getCurrentFrame(v.parent.viewer.appSink, true)
+		if ret != gst.FlowOK {
+			log.Println("error getting frame", ret)
+			return
+		}
+		v.parent.viewer.Frame().Image = im
+		v.parent.viewer.Frame().Refresh()
+		if v.parent.onTapped != nil {
+			v.parent.onTapped()
+		}
+	}
+
+	return cursor
+}
+
+func (v *videoControlsRenderer) createBackToZeroButton() *widget.Button {
+	backToZeroButton := widget.NewButtonWithIcon("", theme.MediaSkipPreviousIcon(), func() {
+		v.parent.viewer.Seek(0)
+		if v.parent.onTapped == nil {
+			return
+		}
+		v.parent.onTapped()
+	})
+	backToZeroButton.Importance = widget.LowImportance
+	return backToZeroButton
+}
+
+func (v *videoControlsRenderer) createFullScreenButton() *widget.Button {
+	fullscreenButton := widget.NewButtonWithIcon("", theme.ViewFullScreenIcon(), func() {
+		v.isFullScreen = !v.isFullScreen
+		v.parent.viewer.SetFullScreen(v.isFullScreen)
+	})
+	fullscreenButton.Importance = widget.LowImportance
+	return fullscreenButton
+}
+
+func (v *videoControlsRenderer) createPlayButton() *widget.Button {
+	playbutton := widget.NewButtonWithIcon("", theme.MediaPlayIcon(), func() {
+		if v.parent.viewer.pipeline == nil {
+			return
+		}
+		if v.parent.viewer.IsPlaying() {
+			v.parent.viewer.Pause()
+		} else {
+			v.parent.viewer.Play()
+		}
+		if v.parent.onTapped == nil {
+			return
+		}
+		v.parent.onTapped()
+	})
+	playbutton.Importance = widget.LowImportance
+	return playbutton
+}
+
+func (v *videoControlsRenderer) createStepBackwardButton() *widget.Button {
+	stepBackwardButton := widget.NewButtonWithIcon("", theme.MediaFastRewindIcon(), func() {
+		pos, _ := v.parent.viewer.CurrentPosition()
+		v.parent.viewer.Seek(pos - v.parent.timeStep)
+		if v.parent.onTapped == nil {
+			return
+		}
+		v.parent.onTapped()
+	})
+	stepBackwardButton.Importance = widget.LowImportance
+	return stepBackwardButton
+}
+
+func (v *videoControlsRenderer) createStepForwardButton() *widget.Button {
+	stepForwardButton := widget.NewButtonWithIcon("", theme.MediaFastForwardIcon(), func() {
+		pos, _ := v.parent.viewer.CurrentPosition()
+		v.parent.viewer.Seek(pos + v.parent.timeStep)
+		if v.parent.onTapped == nil {
+			return
+		}
+		v.parent.onTapped()
+	})
+	stepForwardButton.Importance = widget.LowImportance
+	return stepForwardButton
+}
+
+func (v *videoControlsRenderer) createVolumeMuteButton() *widget.Button {
+	volumeMuteButton := widget.NewButtonWithIcon("", theme.VolumeUpIcon(), func() {
+		v.parent.viewer.ToggleMute()
+		if v.parent.viewer.IsMuted() {
+			v.muteButton.SetIcon(theme.VolumeMuteIcon())
+		} else {
+			v.muteButton.SetIcon(theme.VolumeUpIcon())
+		}
+		if v.parent.onTapped == nil {
+			return
+		}
+		v.parent.onTapped()
+	})
+	volumeMuteButton.Importance = widget.LowImportance
+	return volumeMuteButton
+}
+
+func (v *videoControlsRenderer) createVolumeSlider() *widget.Slider {
+
+	volumeSlider := widget.NewSlider(0, 1)
+	volumeSlider.Orientation = widget.Vertical
+	volumeSlider.Step = 0.01
+	volumeSlider.Value = 1
+	volumeSlider.OnChanged = func(value float64) {
+		v.parent.viewer.SetVolume(value)
+	}
+
+	return volumeSlider
 }
 
 // showVideoControls displays the video controls dialog to control the video balance (contrast, brightness, hue and saturation).

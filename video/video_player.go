@@ -90,6 +90,17 @@ func (v *Player) DoubleTapped(ev *fyne.PointEvent) {
 	}
 }
 
+// EnableAutoHide sets the autoHide feature of the video widget.
+func (v *Player) EnableAutoHide(b bool) {
+	v.autoHide = b
+	v.controls.Show()
+	if b {
+		v.doAutoHide()
+	} else {
+		v.cancelAutoHide()
+	}
+}
+
 // MouseIn shows the controls of the video widget.
 //
 // Implements: desktop.Hoverable
@@ -107,17 +118,6 @@ func (v *Player) MouseMoved(pos *desktop.MouseEvent) {
 //
 // Implements: desktop.Hoverable
 func (v *Player) MouseOut() {}
-
-// EnableAutoHide sets the autoHide feature of the video widget.
-func (v *Player) EnableAutoHide(b bool) {
-	v.autoHide = b
-	v.controls.Show()
-	if b {
-		v.doAutoHide()
-	} else {
-		v.cancelAutoHide()
-	}
-}
 
 // SetAutoHideTimer sets the time to wait before hiding the controls.
 func (v *Player) SetAutoHideTimer(d time.Duration) {

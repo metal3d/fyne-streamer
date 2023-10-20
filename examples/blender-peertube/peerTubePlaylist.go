@@ -18,6 +18,9 @@ import (
 
 const peerTubeURL = "https://video.blender.org"
 
+var _ fyne.CanvasObject = (*videoListElement)(nil)
+var _ fyne.Widget = (*videoListElement)(nil)
+
 type peerTubeVideo struct {
 	Name          string `json:"name"`
 	Id            uint   `json:"id"`
@@ -25,52 +28,38 @@ type peerTubeVideo struct {
 	Thumbnail     image.Image
 	VideoURL      string
 }
-
-func getPeerTubeVideos() map[string]peerTubeVideo {
-	resp, err := http.Get(peerTubeURL + "/api/v1/video-channels/blender_open_movies/videos?count=100&sort=publishedAt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
-	videos := struct {
-		Data []peerTubeVideo `json:"data"`
-	}{}
-	err = json.NewDecoder(resp.Body).Decode(&videos)
-	if err != nil {
-		log.Fatal(err)
-	}
-	videoMap := make(map[string]peerTubeVideo)
-	for _, video := range videos.Data {
-		video.VideoURL = getVideoUrl(video.Id)
-		resp, err := http.Get(peerTubeURL + video.ThumbnailPath)
-		if err == nil {
-			defer resp.Body.Close()
-			video.Thumbnail, _, err = image.Decode(resp.Body)
-		}
-		videoMap[video.Name] = video
-	}
-	return videoMap
+type videoListElement struct {
+	widget.BaseWidget
+	Label *widget.Label
+	Image *canvas.Image
 }
 
-func getVideoUrl(id uint) string {
-	resp, err := http.Get(fmt.Sprintf("%s/api/v1/videos/%d", peerTubeURL, id))
-	if err != nil {
-		log.Fatal(err)
+func newVideoListElement() *videoListElement {
+	v := &videoListElement{
+		Label: widget.NewLabel(""),
+		Image: canvas.NewImageFromImage(image.NewRGBA(image.Rect(0, 0, 1, 1))),
 	}
-	defer resp.Body.Close()
-	video := struct {
-		Files []struct {
-			FileUrl string `json:"fileUrl"`
-		} `json:"files"`
-	}{}
-	err = json.NewDecoder(resp.Body).Decode(&video)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if len(video.Files) > 0 {
-		return video.Files[0].FileUrl
-	}
-	return ""
+	v.ExtendBaseWidget(v)
+	v.Label.Wrapping = fyne.TextWrapWord
+	v.Image.FillMode = canvas.ImageFillContain
+	v.Image.ScaleMode = canvas.ImageScaleFastest
+	v.Image.SetMinSize(fyne.NewSize(90, 75))
+	return v
+}
+
+func (v *videoListElement) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(
+		container.NewBorder(
+			nil, nil,
+			v.Image, nil,
+			v.Label,
+		),
+	)
+}
+
+func (v *videoListElement) SetVideoInfo(video *peerTubeVideo) {
+	v.Label.SetText(video.Name)
+	v.Image.Image = video.Thumbnail
 }
 
 func getPeerTubeList(videoWidget *video.Player, w fyne.Window) *widget.List {
@@ -110,39 +99,52 @@ func getPeerTubeList(videoWidget *video.Player, w fyne.Window) *widget.List {
 	return list
 }
 
-var _ fyne.CanvasObject = (*videoListElement)(nil)
-var _ fyne.Widget = (*videoListElement)(nil)
-
-type videoListElement struct {
-	widget.BaseWidget
-	Label *widget.Label
-	Image *canvas.Image
-}
-
-func newVideoListElement() *videoListElement {
-	v := &videoListElement{
-		Label: widget.NewLabel(""),
-		Image: canvas.NewImageFromImage(image.NewRGBA(image.Rect(0, 0, 1, 1))),
+func getPeerTubeVideos() map[string]peerTubeVideo {
+	resp, err := http.Get(peerTubeURL + "/api/v1/video-channels/blender_open_movies/videos?count=100&sort=publishedAt")
+	if err != nil {
+		log.Fatal(err)
 	}
-	v.ExtendBaseWidget(v)
-	v.Label.Wrapping = fyne.TextWrapWord
-	v.Image.FillMode = canvas.ImageFillContain
-	v.Image.ScaleMode = canvas.ImageScaleFastest
-	v.Image.SetMinSize(fyne.NewSize(90, 75))
-	return v
+	defer resp.Body.Close()
+	videos := struct {
+		Data []peerTubeVideo `json:"data"`
+	}{}
+	err = json.NewDecoder(resp.Body).Decode(&videos)
+	if err != nil {
+		log.Fatal(err)
+	}
+	videoMap := make(map[string]peerTubeVideo)
+	for _, video := range videos.Data {
+		video.VideoURL = getVideoUrl(video.Id)
+		resp, err := http.Get(peerTubeURL + video.ThumbnailPath)
+		if err == nil {
+			defer resp.Body.Close()
+			video.Thumbnail, _, err = image.Decode(resp.Body)
+			if err != nil {
+				fyne.LogError("Failed to decode thumbnail", err)
+			}
+		}
+		videoMap[video.Name] = video
+	}
+	return videoMap
 }
 
-func (v *videoListElement) CreateRenderer() fyne.WidgetRenderer {
-	return widget.NewSimpleRenderer(
-		container.NewBorder(
-			nil, nil,
-			v.Image, nil,
-			v.Label,
-		),
-	)
-}
-
-func (v *videoListElement) SetVideoInfo(video *peerTubeVideo) {
-	v.Label.SetText(video.Name)
-	v.Image.Image = video.Thumbnail
+func getVideoUrl(id uint) string {
+	resp, err := http.Get(fmt.Sprintf("%s/api/v1/videos/%d", peerTubeURL, id))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	video := struct {
+		Files []struct {
+			FileUrl string `json:"fileUrl"`
+		} `json:"files"`
+	}{}
+	err = json.NewDecoder(resp.Body).Decode(&video)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(video.Files) > 0 {
+		return video.Files[0].FileUrl
+	}
+	return ""
 }
