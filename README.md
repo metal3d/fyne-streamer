@@ -79,16 +79,16 @@ import (
 )
 
 func main(){
-    a := app.New()
-    win := a.NewWindow("A viewer")
+	a := app.New()
+	win := a.NewWindow("A viewer")
 
-    viewer := video.NewViewer()
-    viewer.Open(storage.NewFileURI("/path/to/a/video"))
-    viewer.Play()
+	viewer := video.NewViewer()
+	viewer.Open(storage.NewFileURI("/path/to/a/video"))
+	viewer.Play()
 
-    win.SetContent(viewer)
-    win.Resize(fyne.NewSize(800,600))
-    win.ShowAndRun()
+	win.SetContent(viewer)
+	win.Resize(fyne.NewSize(800,600))
+	win.ShowAndRun()
 }
 ```
 
@@ -105,16 +105,16 @@ import (
 )
 
 func main(){
-    a := app.New()
-    win := a.NewWindow("A viewer")
+	a := app.New()
+	win := a.NewWindow("A viewer")
 
-    player := video.NewPlayer()
-    player.Open(storage.NewFileURI("/path/to/a/video"))
-    player.Play()
+	player := video.NewPlayer()
+	player.Open(storage.NewFileURI("/path/to/a/video"))
+	player.Play()
 
-    win.SetContent(player)
-    win.Resize(fyne.NewSize(800,600))
-    win.ShowAndRun()
+	win.SetContent(player)
+	win.Resize(fyne.NewSize(800,600))
+	win.ShowAndRun()
 }
 ```
 
@@ -133,14 +133,14 @@ import (
 
 func main() {
 	pipeline := `
-    videotestsrc name={{ .InputElementName }} ! # the input, a video test
-    videoconvert n-threads=4 ! # convert to something usable
-    videorate name={{ .VideoRateElementName }} max-rate=30 ! # fix the framerate
-    # encode to jpeg (or png), mandatory for appsink
-    jpegenc name={{ .ImageEncoderElementName }} quality=80 !
-    # the appsink (mandatory)
-    appsink name={{ .AppSinkElementName }} drop=true max-lateness=33333 sync=true
-    `
+	videotestsrc name={{ .InputElementName }} ! # the input, a video test
+	videoconvert n-threads=4 ! # convert to something usable
+	videorate name={{ .VideoRateElementName }} max-rate=30 ! # fix the framerate
+	# encode to jpeg (or png), mandatory for appsink
+	jpegenc name={{ .ImageEncoderElementName }} quality=80 !
+	# the appsink (mandatory)
+	appsink name={{ .AppSinkElementName }} drop=true max-lateness=33333 sync=true
+	`
 
 	a := app.New()
 	w := a.NewWindow("Simple video test")
@@ -152,7 +152,6 @@ func main() {
 	w.Resize(fyne.NewSize(640, 480))
 	w.SetContent(videoWidget)
 	w.ShowAndRun()
-
 }
 ```
 
