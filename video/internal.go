@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/jpeg"
-	"image/png"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"log"
 	"time"
 
@@ -168,6 +169,7 @@ func (v *Viewer) getCurrentFrame(appSink *app.Sink, latest bool) (image.Image, g
 	if buffer == nil {
 		return nil, gst.FlowError
 	}
+	defer buffer.Unmap()
 
 	samples := buffer.Map(gst.MapRead).AsUint8Slice()
 	if samples == nil {
@@ -176,15 +178,10 @@ func (v *Viewer) getCurrentFrame(appSink *app.Sink, latest bool) (image.Image, g
 
 	// the sample is a jpeg
 	reader := bytes.NewReader(samples)
-	img, err := jpeg.Decode(reader)
+	img, _, err := image.Decode(reader)
 	if err != nil {
-		// try to decode as png
-		reader := bytes.NewReader(samples)
-		img, err = png.Decode(reader)
-		if err != nil {
-			fyne.LogError("Failed to decode jpeg: %v", err)
-			return nil, gst.FlowError
-		}
+		fyne.LogError("Failed to decode image: %w", err)
+		return nil, gst.FlowError
 	}
 
 	return img, gst.FlowOK
