@@ -2,7 +2,6 @@ package video
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -14,28 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const viewerVideoTimeout = 5 * time.Second
-
 func init() {
 	utils.GstreamerInit()
-}
-
-func _createViewerTestingVideo() {
-	pipeline, err := gst.NewPipelineFromString(`
-        videotestsrc !
-        videoconvert !
-        videoscale !
-        video/x-raw,width=320,height=240 !
-        vp8enc !
-        webmmux !
-        filesink location=/tmp/test.webm`)
-	if err != nil {
-		panic(err)
-	}
-	pipeline.SetState(gst.StatePlaying)
-	time.Sleep(viewerVideoTimeout)
-	pipeline.SetState(gst.StateNull)
-	pipeline.Clear()
 }
 
 func TestCreateAViewer(t *testing.T) {
@@ -76,8 +55,15 @@ func TestCreateVideo(t *testing.T) {
 
 	video.Play()
 	state = pipeline.GetCurrentState()
-	assert.Equal(t, state, gst.StatePlaying)
+	assert.Equal(t, gst.StatePlaying, state)
 	assert.True(t, video.IsPlaying())
+
+	// check that the video can be paused
+	time.Sleep(1 * time.Second)
+	video.Pause()
+	state = pipeline.GetCurrentState()
+	assert.Equal(t, gst.StatePaused, state)
+	assert.False(t, video.IsPlaying())
 
 	// ensure that the widget is 320x240
 	assert.Equal(t, video.VideoSize().Width, float32(320))
@@ -85,11 +71,9 @@ func TestCreateVideo(t *testing.T) {
 }
 
 func TestOpeningFile(t *testing.T) {
-	_createViewerTestingVideo()
-	defer os.Remove("/tmp/test.webm")
 
 	video := NewViewer()
-	ctx, cancel := context.WithTimeout(context.Background(), viewerVideoTimeout+1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 
 	preRollReached := false
 	newFrameReached := 0
@@ -110,7 +94,7 @@ func TestOpeningFile(t *testing.T) {
 	})
 
 	_ = test.WidgetRenderer(video)
-	err := video.Open(storage.NewFileURI("/tmp/test.webm"))
+	err := video.Open(storage.NewFileURI(_testVideoFile))
 	assert.Nil(t, err)
 
 	// pipeline should not be nil
@@ -119,7 +103,7 @@ func TestOpeningFile(t *testing.T) {
 
 	// state shuld be Null
 	state := pipeline.GetCurrentState()
-	assert.Equal(t, state, gst.StateNull)
+	assert.Equal(t, gst.StateNull, state)
 
 	err = video.Play()
 	assert.Nil(t, err)
@@ -188,4 +172,26 @@ func TestFullScreenMode(t *testing.T) {
 	assert.True(t, video.fullscreenWindow.FullScreen())
 
 	video.SetFullScreen(false)
+}
+
+func TestSeek(t *testing.T) {
+	video := NewViewer()
+	_ = test.WidgetRenderer(video)
+	err := video.Open(storage.NewFileURI(_testVideoFile))
+	assert.Nil(t, err)
+
+	err = video.Play()
+	assert.Nil(t, err, "cannot play")
+
+	// wait ready state
+	context, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	video.SetOnNewFrame(func(at time.Duration) {
+		cancel()
+	})
+	<-context.Done()
+
+	// seek to 2 seconds
+	time.Sleep(500 * time.Millisecond)
+	err = video.Seek(2 * time.Second)
+	assert.Nil(t, err, "error while seeking position")
 }

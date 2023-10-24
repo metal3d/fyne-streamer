@@ -78,18 +78,19 @@ func (vc *VideoControls) SetDuration(d time.Duration) {
 // videoControlsRenderer is the renderer of the video controls widget. This is the widget that
 // displays the buttons, sliders, background, etc.
 type videoControlsRenderer struct {
-	parent           *VideoControls
-	playbutton       *widget.Button
-	muteButton       *widget.Button
-	fullscreenButton *widget.Button
-	timeText         *widget.Label
-	currentTime      time.Duration
-	totalTime        time.Duration
-	cursor           *widget.Slider
-	controls         *fyne.Container
-	background       *canvas.Rectangle
-	isFullScreen     bool
-	manualSeeked     bool
+	parent              *VideoControls
+	playbutton          *widget.Button
+	muteButton          *widget.Button
+	fullscreenButton    *widget.Button
+	videoControlsButton *widget.Button
+	timeText            *widget.Label
+	currentTime         time.Duration
+	totalTime           time.Duration
+	cursor              *widget.Slider
+	controls            *fyne.Container
+	background          *canvas.Rectangle
+	isFullScreen        bool
+	manualSeeked        bool
 }
 
 // newVideoControlsRenderer creates a new videoControlsRenderer.
@@ -111,7 +112,9 @@ func newVideoControlsRenderer(parent *VideoControls) *videoControlsRenderer {
 	stepBackwardButton := renderer.createStepBackwardButton()
 	volumeMuteButton := renderer.createVolumeMuteButton()
 
-	videoControlsButton := widget.NewButtonWithIcon("", theme.SettingsIcon(), renderer.showVideoControls)
+	videoControlsButton := widget.NewButtonWithIcon("", theme.SettingsIcon(), func() {
+		renderer.showVideoControls().Show()
+	})
 	videoControlsButton.Importance = widget.LowImportance
 
 	controls := container.NewBorder(
@@ -153,6 +156,7 @@ func newVideoControlsRenderer(parent *VideoControls) *videoControlsRenderer {
 	renderer.background = background
 	renderer.controls = controls
 	renderer.muteButton = volumeMuteButton
+	renderer.videoControlsButton = videoControlsButton
 
 	return renderer
 }
@@ -369,9 +373,9 @@ func (v *videoControlsRenderer) createVolumeSlider() *widget.Slider {
 }
 
 // showVideoControls displays the video controls dialog to control the video balance (contrast, brightness, hue and saturation).
-func (v *videoControlsRenderer) showVideoControls() {
+func (v *videoControlsRenderer) showVideoControls() dialog.Dialog {
 	if v.parent.viewer.pipeline == nil {
-		return
+		return nil
 	}
 
 	// Some Labels to display the current values
@@ -467,5 +471,5 @@ func (v *videoControlsRenderer) showVideoControls() {
 	hueSlider.OnChanged(hue)
 	saturationSlider.OnChanged(saturation)
 
-	controlDialog.Show()
+	return controlDialog
 }

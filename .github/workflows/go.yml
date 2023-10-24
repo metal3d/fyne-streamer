@@ -42,5 +42,4 @@ jobs:
 
     - name: Test
       run: |
-        jackd -r -d dummy &>/dev/null &
-        go test -v ./video
+        make citest
