@@ -16,6 +16,7 @@ func init() {
 }
 
 func TestCreatePlayer(t *testing.T) {
+	setup(t)
 	player := NewPlayer()
 	_ = test.WidgetRenderer(player)
 	pipeline := player.Pipeline()
@@ -23,6 +24,7 @@ func TestCreatePlayer(t *testing.T) {
 }
 
 func TestPlayerCursor(t *testing.T) {
+	setup(t)
 	player := NewPlayer()
 	window := test.NewWindow(player)
 	window.Resize(fyne.NewSize(320, 240))
