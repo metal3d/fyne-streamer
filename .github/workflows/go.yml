@@ -4,10 +4,8 @@
 name: Go
 
 on:
-  push:
-    branches: [ "develop" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "develop" ]
 
 jobs:
 
