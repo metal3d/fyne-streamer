@@ -60,6 +60,16 @@ func NewViewer() *Viewer {
 	return v
 }
 
+// Clear the pipeline. Use it with caution, it may cause some issues.
+func (v *Viewer) Clear() error {
+	if v.pipeline == nil {
+		return streamer.ErrNoPipeline
+	}
+	defer v.resync()
+	v.pipeline.Clear()
+	return nil
+}
+
 // CreateRenderer creates a renderer for the video widget.
 //
 // Implements: fyne.Widget
@@ -387,6 +397,11 @@ func (v *Viewer) SetMaxRate(rate int) error {
 	return nil
 }
 
+// SetMinSize sets the minimum size of the video widget.
+func (v *Viewer) SetMinSize(size fyne.Size) {
+	v.Frame().SetMinSize(size)
+}
+
 // SetOnEOS set the function to call when EOS is reached in the pipeline. E.g. when the// video ends.
 func (v *Viewer) SetOnEOS(f func()) {
 	v.onEOS = f
@@ -488,6 +503,14 @@ func (v *Viewer) SetVolume(volume float64) {
 		return
 	}
 	volumeElement.SetProperty("volume", volume)
+}
+
+// Stop the stream if the pipeline is not nil.
+func (v *Viewer) Stop() error {
+	if v.pipeline == nil {
+		return streamer.ErrNoPipeline
+	}
+	return v.SetState(gst.StateNull)
 }
 
 // ToggleMute mutes or unmutes the audio.
