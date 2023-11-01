@@ -9,15 +9,11 @@ import (
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/test"
 	"github.com/go-gst/go-gst/gst"
-	"github.com/metal3d/fyne-streamer/internal/utils"
 	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	utils.GstreamerInit()
-}
-
 func TestCreateAViewer(t *testing.T) {
+	setup(t)
 	viewer := NewViewer()
 	_ = test.WidgetRenderer(viewer)
 	pipeline := viewer.Pipeline()
@@ -25,14 +21,17 @@ func TestCreateAViewer(t *testing.T) {
 }
 
 func TestCheckMandatoryElements(t *testing.T) {
+	setup(t)
 	video := NewViewer()
 	_ = test.WidgetRenderer(video)
 	err := video.SetPipelineFromString(`
     videotestsrc ! fakesink`)
 	assert.NotNil(t, err)
+	assert.Contains(t, logBuffer.String(), "could not find element")
 }
 
 func TestCreateVideo(t *testing.T) {
+	setup(t)
 	video := NewViewer()
 	_ = test.WidgetRenderer(video)
 	err := video.SetPipelineFromString(`
@@ -54,13 +53,15 @@ func TestCreateVideo(t *testing.T) {
 	assert.Equal(t, state, gst.StateNull)
 
 	video.Play()
+	time.Sleep(200 * time.Millisecond)
 	state = pipeline.GetCurrentState()
-	assert.Equal(t, gst.StatePlaying, state)
-	assert.True(t, video.IsPlaying())
+	assert.Equal(t, gst.StatePlaying, state, "pipeline should be playing, but its state is %v", state)
+	assert.True(t, video.IsPlaying(), "video should be playing, but it is not")
 
 	// check that the video can be paused
 	time.Sleep(1 * time.Second)
 	video.Pause()
+	time.Sleep(200 * time.Millisecond)
 	state = pipeline.GetCurrentState()
 	assert.Equal(t, gst.StatePaused, state)
 	assert.False(t, video.IsPlaying())
@@ -71,6 +72,7 @@ func TestCreateVideo(t *testing.T) {
 }
 
 func TestOpeningFile(t *testing.T) {
+	setup(t)
 
 	video := NewViewer()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -115,6 +117,7 @@ func TestOpeningFile(t *testing.T) {
 }
 
 func TestBalance(t *testing.T) {
+	setup(t)
 	video := NewViewer()
 	_ = test.WidgetRenderer(video)
 	video.SetPipelineFromString(`
@@ -152,6 +155,7 @@ func TestBalance(t *testing.T) {
 }
 
 func TestFullScreenMode(t *testing.T) {
+	setup(t)
 	video := NewViewer()
 	win := test.NewWindow(video)
 	win.Resize(fyne.NewSize(320, 240))
@@ -175,6 +179,7 @@ func TestFullScreenMode(t *testing.T) {
 }
 
 func TestSeek(t *testing.T) {
+	setup(t)
 	video := NewViewer()
 	_ = test.WidgetRenderer(video)
 	err := video.Open(storage.NewFileURI(_testVideoFile))

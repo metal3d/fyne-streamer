@@ -2,7 +2,6 @@ package video
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"image"
 	"image/color"
@@ -209,6 +208,7 @@ func (v *Viewer) resync() {
 // SetState sets the state of the pipeline. It is a blocking call with a timeout of 50ms. This is a workaround
 // because the pipeline.SetState can block forever if the pipeline is not in a good state.
 func (v *Viewer) setState(state gst.State) error {
+
 	if v.pipeline == nil {
 		return fmt.Errorf("No pipeline")
 	}
@@ -221,23 +221,27 @@ func (v *Viewer) setState(state gst.State) error {
 	}
 
 	// wait for the state to be set
-	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
-	go func() {
+	done := make(chan error)
+	go func(done chan error) {
+		var err error
+		defer func() {
+			done <- err
+		}()
 		for {
 			select {
-			case <-ctx.Done():
-				// timeout or context cancelled
+			case <-time.Tick(1000 * time.Millisecond):
+				err = fmt.Errorf("timeout waiting for state %s", state)
 				return
 			case <-time.After(1 * time.Millisecond):
 				current_state := v.pipeline.GetCurrentState()
 				if current_state == state {
-					cancel()
+					return
 				}
 			}
 		}
-	}()
-	<-ctx.Done()
-	return err
+	}(done)
+
+	return <-done
 }
 
 func (v *Viewer) setCurrentWindowFinder(w fyne.CanvasObject) {

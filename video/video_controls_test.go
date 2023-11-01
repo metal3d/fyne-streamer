@@ -10,6 +10,7 @@ import (
 )
 
 func TestControlVisibility(t *testing.T) {
+	setup(t)
 
 	widget := NewPlayer()
 	widget.SetAutoHideTimer(500 * time.Millisecond) // because 3s is too long for a test
@@ -45,6 +46,8 @@ func TestControlVisibility(t *testing.T) {
 }
 
 func TestShowVideoControls(t *testing.T) {
+	setup(t)
+
 	widget := NewPlayer()
 	widget.SetAutoHideTimer(500 * time.Millisecond) // because 3s is too long for a test
 	window := test.NewWindow(widget)
